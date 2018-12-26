@@ -37,6 +37,7 @@ class MessageConsumer(object):
         :return: None
         """
         async for message in self._queue:
+            logger.info('Consuming message: {}'.format(message))
             try:
                 if self._callback:
                     self._callback(message)
@@ -63,16 +64,19 @@ class MessageProducer(object):
 
         :return: None
         """
+        i = 1
         while True:
-            message = 'A produced message!'
+            message = 'Message {}'.format(i)
+            logger.info('Produced new message: {}'.format(message))
             await self._queue.put(message)
             await tornado.gen.sleep(random.uniform(1, 5))
+            i = i + 1
 
 
 class WebSocketManager(object):
     """
     The goal of this class is to manage the WebSocket handlers and notify them.
-    It is an implementation of the Observer pattern where this class represents the Subject
+    It is an implementation of the Observer pattern where this class represents the Observable
     and the handlers represent the Observers.
     """
 
@@ -80,9 +84,9 @@ class WebSocketManager(object):
         """
         Initialize the manager.
         """
-        self._listeners = set()
+        self._observers = set()
 
-    def add_websocket(self, websocket):
+    def register_websocket(self, websocket):
         """
         Register a new WebSocket handler, usually called by the handler himself. It will be notified
         about new messages.
@@ -90,7 +94,8 @@ class WebSocketManager(object):
         :param websocket: a WebSocket handler. It must implement the notify() method
         :return: None
         """
-        self._listeners.add(websocket)
+        logger.info('Registering WS handler: {}'.format(websocket))
+        self._observers.add(websocket)
 
     def remove_websocket(self, websocket):
         """
@@ -99,7 +104,8 @@ class WebSocketManager(object):
         :param websocket: the WebSocket handler to remove.
         :return: None
         """
-        self._listeners.discard(websocket)
+        logger.info('Removing WS handler: {}'.format(websocket))
+        self._observers.discard(websocket)
 
     def notify_websockets(self, message):
         """
@@ -108,8 +114,9 @@ class WebSocketManager(object):
         :param message: the message that will be sent to all registered handlers
         :return: None
         """
-        for listener in self._listeners:
-            listener.notify(message)
+        logger.info('Notifying {} websockets'.format(len(self._observers)))
+        for observer in self._observers:
+            observer.notify(message)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -124,6 +131,7 @@ class MainHandler(tornado.web.RequestHandler):
 
         :return: the HTML page representing the main application.
         """
+        logger.info('Main page requested')
         self.render('templates/index.html')
 
 
@@ -138,7 +146,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         :return: None
         """
-        self.application.ws_manager.add_websocket(self)
+        logger.info('A WS connection is open')
+        self.application.ws_manager.register_websocket(self)
 
     def on_close(self):
         """
@@ -146,6 +155,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         :return: None
         """
+        logger.info('A WS connection is closed')
         self.application.ws_manager.remove_websocket(self)
 
     def notify(self, message):
@@ -155,10 +165,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         :param message: the message received by the Observable.
         :return: None
         """
+        logger.info('Notified with message: {}'.format(message))
         self.write_message(message)
 
 
 if __name__ == "__main__":
+    logger.info('Starting the application')
+
     # Define the Tornado application
     application = tornado.web.Application([
         (r"/", MainHandler),
