@@ -21,4 +21,4 @@ and can be run with
 python3 webserver.py
 ```
 
-Assuming the application is running on `localhost:8888` (default port), logs will show the produced messages and all clients connected to `http://localhost:8888` will receive the messaged via WebSocket in real time. The received messages can be seen by inspecting the browser console.
+Assuming the application is running on `localhost:8888` (default port), logs will show the produced messages and all clients connected to `http://localhost:8888` will receive the messages via WebSocket in real time. The received messages can be seen by inspecting the browser console.
