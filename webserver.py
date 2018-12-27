@@ -1,3 +1,24 @@
+#!/usr/bin/env python3
+
+"""
+This is an example of a Tornado web application featuring real time notifications.
+
+Executing the file with:
+    
+    $ python3 webserver.py
+
+will start the I/O loop running the Tornado web server, a producer generating some messages and a consumer
+that will read these messages. The producer and the consumer share an asynchronous queue, which they use
+to exchange the messages. This mechanism allow for more than one consumer/producer.
+
+The consumer action is defined by the function passed as the "callback" argument in the consumer __init__
+method. In this case, the only action executed is sending the message to all connected and registered
+WebSocket clients.
+
+The WebSocket clients (connections) are handled by the WebSocketManager object, which implements the
+Observable behaviour of the Observer Design Pattern. The WebSocketHandler
+"""
+
 import sys
 import logging
 import random
@@ -9,9 +30,7 @@ import tornado.queues
 import tornado.gen
 
 log_format = '%(levelname) -5s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
-logging.basicConfig(stream=sys.stdout,
-                    format=log_format,
-                    level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, format=log_format, level=logging.INFO)
 logger = logging.getLogger()
 
 
@@ -23,6 +42,9 @@ class MessageConsumer(object):
     def __init__(self, queue, callback=None):
         """
         Initialize the consumer instance.
+
+        The function passed as callback must accept one positional argument,
+        which will be used to pass the received message.
 
         :param queue: the queue containing the messages to consume
         :param callback: invoked when a new message is received
@@ -119,22 +141,6 @@ class WebSocketManager(object):
             observer.notify(message)
 
 
-class MainHandler(tornado.web.RequestHandler):
-    """
-    Handle the main page.
-    """
-
-    @tornado.gen.coroutine
-    def get(self):
-        """
-        Return the main page.
-
-        :return: the HTML page representing the main application.
-        """
-        logger.info('Main page requested')
-        self.render('templates/index.html')
-
-
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     """
     Handle WebSocket connections.
@@ -169,6 +175,22 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.write_message(message)
 
 
+class MainHandler(tornado.web.RequestHandler):
+    """
+    Handle the main page.
+    """
+
+    @tornado.gen.coroutine
+    def get(self):
+        """
+        Return the main page.
+
+        :return: the HTML page representing the main application.
+        """
+        logger.info('Main page requested')
+        self.render('templates/index.html')
+
+
 if __name__ == "__main__":
     logger.info('Starting the application')
 
@@ -177,6 +199,9 @@ if __name__ == "__main__":
         (r"/", MainHandler),
         (r"/ws", WebSocketHandler),
     ])
+
+    # We attach the WS manager as a property of the Tornado application.
+    # This way the manager is accessible from inside the WebSocketHandler class.
     application.ws_manager = WebSocketManager()
     application.listen(8888)
 
