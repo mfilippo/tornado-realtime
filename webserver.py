@@ -16,7 +16,9 @@ method. In this case, the only action executed is sending the message to all con
 WebSocket clients.
 
 The WebSocket clients (connections) are handled by the WebSocketManager object, which implements the
-Observable behaviour of the Observer Design Pattern. The WebSocketHandler
+Observable behaviour of the Observer Design Pattern. The Tornado WebSocketHandler objects implements instead
+the Observer behaviour, they will respectively register/remove theirself to the manager when a new connection
+is opened/closed.
 """
 
 import sys
@@ -58,8 +60,9 @@ class MessageConsumer(object):
 
         :return: None
         """
+        logger.info('Starting the consumer')
         async for message in self._queue:
-            logger.info('Consuming message: {}'.format(message))
+            logger.debug('Consuming message: {}'.format(message))
             try:
                 if self._callback:
                     self._callback(message)
@@ -86,10 +89,11 @@ class MessageProducer(object):
 
         :return: None
         """
+        logger.info('Starting the producer')
         i = 1
         while True:
             message = 'Message {}'.format(i)
-            logger.info('Produced new message: {}'.format(message))
+            logger.debug('Produced new message: {}'.format(message))
             await self._queue.put(message)
             await tornado.gen.sleep(random.uniform(1, 5))
             i = i + 1
@@ -136,6 +140,7 @@ class WebSocketManager(object):
         :param message: the message that will be sent to all registered handlers
         :return: None
         """
+        logger.info('New message: {}'.format(message))
         logger.info('Notifying {} websockets'.format(len(self._observers)))
         for observer in self._observers:
             observer.notify(message)
@@ -185,7 +190,7 @@ class MainHandler(tornado.web.RequestHandler):
         """
         Return the main page.
 
-        :return: the HTML page representing the main application.
+        :return: the HTML page containing the main application.
         """
         logger.info('Main page requested')
         self.render('templates/index.html')
